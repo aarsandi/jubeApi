@@ -10,8 +10,6 @@ use App\Http\Controllers\Controller;
 use App\Models\Product;
 use App\Transformers\UserTransformer;
 
-
-
 class WebhookController extends Controller
 {
 
