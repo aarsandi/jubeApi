@@ -57,7 +57,7 @@ class WebhookController extends Controller
                     "items"=> $changeProductShopai
                 ]);
                 $client = new Client([ 'headers' => ['Content-Type' => 'application/json'] ]);
-                $message = $client->request('PATCH', 'http://localhost:3006/item/updateStock', [ 'body' => $bodyInput ]);
+                $message = $client->request('PATCH', 'http://45.80.181.216:3006/item/updateStock', [ 'body' => $bodyInput ]);
             }else{
                 // jika kosong
             }            
@@ -115,7 +115,7 @@ class WebhookController extends Controller
                     "items"=> $changeProductTopai
                 ]);
                 $client = new Client([ 'headers' => ['Content-Type' => 'application/json'] ]);
-                $message = $client->request('PATCH', 'http://localhost:3005/item/updateStock', [ 'body' => $bodyInput ]);
+                $message = $client->request('PATCH', 'http://45.80.181.216:3005/item/updateStock', [ 'body' => $bodyInput ]);
             }else{
                 // jika kosong
             }            
