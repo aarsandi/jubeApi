@@ -11,8 +11,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Product;
 use App\Transformers\UserTransformer;
 
-class WebhookController extends Controller
-{
+class WebhookController extends Controller {
 
     public function stockChangeShopai(Request $request) {
         try {
@@ -29,44 +28,88 @@ class WebhookController extends Controller
                     if($find->product_stock>=$item['qty']) {
                         $find->qtyChange = $item['qty'];
                         array_push($arrProductFind,$find);
-                        $decrement = Product::where('product_id', $find->product_id)->decrement('product_stock', $item['qty']);
+                    }else{
+                        // stok di produk internal tidak cukup
+                        DB::table('error_log')->insert([
+                            'marketplace_id' => 6,
+                            'error_message' => 'stok di produk internal tidak cukup',
+                            'error_function' => 'webhook_shopai',
+                            'user_id' => 0,
+                            'created_date' => date('Y-m-d H:i:s'),
+                            'data' => json_encode([
+                                'product.id' => $find->product_id,
+                                'product_marketplace.product_guid' => $item['ItemId'],
+                                'product.product_stock' => $find->product_stock,
+                                'input.qty' => $item['qty']
+                            ])
+                        ]);
                     }
                 }
                 else{
-                    // stok di produk internal tidak cukup
-                }
-            };
-
-            $changeProductShopai = [];
-            foreach($arrProductFind as $item) {
-                $find = DB::table('product_marketplace')
-                ->where(['product_id' => $item->product_id, 'marketplace_id' => 7 ])
-                ->first();
-                if($find) {
-                    array_push($changeProductShopai, [
-                        "action"=> "stock_decrement",
-                        "ItemId"=> intval($find->product_guid),
-                        "qty"=> $item->qtyChange
+                    DB::table('error_log')->insert([
+                        'marketplace_id' => 6,
+                        'error_message' => 'data tidak ditemukan',
+                        'error_function' => 'webhook_shopai',
+                        'user_id' => 0,
+                        'created_date' => date('Y-m-d H:i:s'),
+                        'data' => ''
                     ]);
                 }
             };
             
-            // shopai webhook
-            if(!empty($changeProductShopai)) {
-                $bodyInput = json_encode([
-                    "items"=> $changeProductShopai
-                ]);
-                $client = new Client([ 'headers' => ['Content-Type' => 'application/json'] ]);
-                $message = $client->request('PATCH', 'http://45.80.181.216:3006/item/updateStock', [ 'body' => $bodyInput ]);
-            }else{
-                // jika kosong
-            }            
-
-            return response()->json(
-                [
-                    'message' => "success",
-                ]
-            );
+            foreach($arrProductFind as $item) {
+                // cari data produk topai yang konek sama item ini
+                $find = DB::table('product_marketplace')
+                ->where(['product_id' => $item->product_id, 'marketplace_id' => 7 ])
+                ->first();
+                
+                if($find) {
+                    $sendData = [[
+                        "action"=> "stock_decrement",
+                        "ItemId"=> intval($find->product_guid),
+                        "qty"=> $item->qtyChange
+                    ]];
+                    
+                    $bodyInput = json_encode([
+                        "items"=> $sendData
+                    ]);
+                    $client = new Client([ 'headers' => ['Content-Type' => 'application/json'] ]);
+                    $message = $client->request('PATCH', 'http://45.80.181.216:3006/item/updateStock', [ 'body' => $bodyInput ]);
+                    if($message->getStatusCode() !== 200) {
+                        DB::table('error_log')->insert([
+                            'marketplace_id' => 6,
+                            'error_message' => 'error send data to topai',
+                            'error_function' => 'webhook_shopai',
+                            'user_id' => 0,
+                            'created_date' => date('Y-m-d H:i:s'),
+                            'data' => json_encode($sendData)
+                        ]);
+                    }
+                }else{
+                    DB::table('error_log')->insert([
+                        'marketplace_id' => 6,
+                        'error_message' => 'data yang konek tidak ada',
+                        'error_function' => 'webhook_shopai',
+                        'user_id' => 0,
+                        'created_date' => date('Y-m-d H:i:s'),
+                        'data' => ''
+                    ]);
+                }
+                
+                // decrease di internal
+                $decrement = Product::where('product_id', $item->product_id)->decrement('product_stock', $item->qtyChange);
+                
+                if(!$decrement) {
+                    DB::table('error_log')->insert([
+                        'marketplace_id' => 6,
+                        'error_message' => 'decrease produk internal gagal',
+                        'error_function' => 'webhook_shopai',
+                        'user_id' => 0,
+                        'created_date' => date('Y-m-d H:i:s'),
+                        'data' => ''
+                    ]);
+                }
+            };
         } catch (\Exception $exception) {
             return $this->buildErrorResponse('error' , $exception->getMessage(), $exception->getCode());
         }
@@ -74,7 +117,6 @@ class WebhookController extends Controller
 
     public function stockChangeTopai(Request $request) {
         try {
-            // marketplace_id = 7 = topai
             $body = $request->all();
             $arrProductFind = [];
             foreach($body['data'] as $item) {
@@ -87,47 +129,91 @@ class WebhookController extends Controller
                     if($find->product_stock>=$item['qty']) {
                         $find->qtyChange = $item['qty'];
                         array_push($arrProductFind,$find);
-                        $decrement = Product::where('product_id', $find->product_id)->decrement('product_stock', $item['qty']);
+                    }else{
+                        // stok di produk internal tidak cukup
+                        DB::table('error_log')->insert([
+                            'marketplace_id' => 7,
+                            'error_message' => 'stok di produk internal tidak cukup',
+                            'error_function' => 'webhook_topai',
+                            'user_id' => 0,
+                            'created_date' => date('Y-m-d H:i:s'),
+                            'data' => json_encode([
+                                'product.id' => $find->product_id,
+                                'product_marketplace.product_guid' => $item['ItemId'],
+                                'product.product_stock' => $find->product_stock,
+                                'input.qty' => $item['qty']
+                            ])
+                        ]);
                     }
                 }
                 else{
-                    // stok di produk internal tidak cukup
-                }
-            };
-
-            $changeProductTopai = [];
-            foreach($arrProductFind as $item) {
-                $find = DB::table('product_marketplace')
-                ->where(['product_id' => $item->product_id, 'marketplace_id' => 6 ])
-                ->first();
-                if($find) {
-                    array_push($changeProductTopai, [
-                        "action"=> "stock_decrement",
-                        "ItemId"=> intval($find->product_guid),
-                        "qty"=> $item->qtyChange
+                    DB::table('error_log')->insert([
+                        'marketplace_id' => 7,
+                        'error_message' => 'data tidak ditemukan',
+                        'error_function' => 'webhook_topai',
+                        'user_id' => 0,
+                        'created_date' => date('Y-m-d H:i:s'),
+                        'data' => ''
                     ]);
                 }
             };
             
-            // shopai webhook
-            if(!empty($changeProductTopai)) {
-                $bodyInput = json_encode([
-                    "items"=> $changeProductTopai
-                ]);
-                $client = new Client([ 'headers' => ['Content-Type' => 'application/json'] ]);
-                $message = $client->request('PATCH', 'http://45.80.181.216:3005/item/updateStock', [ 'body' => $bodyInput ]);
-            }else{
-                // jika kosong
-            }            
-
-            return response()->json(
-                [
-                    'message' => "success",
-                ]
-            );
+            foreach($arrProductFind as $item) {
+                // cari data produk topai yang konek sama item ini
+                $find = DB::table('product_marketplace')
+                ->where(['product_id' => $item->product_id, 'marketplace_id' => 6 ])
+                ->first();
+                
+                if($find) {
+                    $sendData = [[
+                        "action"=> "stock_decrement",
+                        "ItemId"=> intval($find->product_guid),
+                        "qty"=> $item->qtyChange
+                    ]];
+                    
+                    $bodyInput = json_encode([
+                        "items"=> $sendData
+                    ]);
+                    $client = new Client([ 'headers' => ['Content-Type' => 'application/json'] ]);
+                    $message = $client->request('PATCH', 'http://45.80.181.216:3005/item/updateStock', [ 'body' => $bodyInput ]);
+                    if($message->getStatusCode() !== 200) {
+                        DB::table('error_log')->insert([
+                            'marketplace_id' => 7,
+                            'error_message' => 'error send data to topai',
+                            'error_function' => 'webhook_topai',
+                            'user_id' => 0,
+                            'created_date' => date('Y-m-d H:i:s'),
+                            'data' => json_encode($sendData)
+                        ]);
+                    }
+                }else{
+                    DB::table('error_log')->insert([
+                        'marketplace_id' => 7,
+                        'error_message' => 'data yang konek tidak ada',
+                        'error_function' => 'webhook_topai',
+                        'user_id' => 0,
+                        'created_date' => date('Y-m-d H:i:s'),
+                        'data' => ''
+                    ]);
+                }
+                
+                // decrease di internal
+                $decrement = Product::where('product_id', $item->product_id)->decrement('product_stock', $item->qtyChange);
+                
+                if(!$decrement) {
+                    DB::table('error_log')->insert([
+                        'marketplace_id' => 7,
+                        'error_message' => 'decrease produk internal gagal',
+                        'error_function' => 'webhook_topai',
+                        'user_id' => 0,
+                        'created_date' => date('Y-m-d H:i:s'),
+                        'data' => ''
+                    ]);
+                }
+            };
         } catch (\Exception $exception) {
             return $this->buildErrorResponse('error' , $exception->getMessage(), $exception->getCode());
-        }    
+        }   
     }
 
  
