@@ -130,7 +130,6 @@ class WebhookController extends Controller {
                         $find->qtyChange = $item['qty'];
                         array_push($arrProductFind,$find);
                     }else{
-                        // stok di produk internal tidak cukup
                         DB::table('error_log')->insert([
                             'marketplace_id' => 7,
                             'error_message' => 'stok di produk internal tidak cukup',
@@ -159,7 +158,6 @@ class WebhookController extends Controller {
             };
             
             foreach($arrProductFind as $item) {
-                // cari data produk topai yang konek sama item ini
                 $find = DB::table('product_marketplace')
                 ->where(['product_id' => $item->product_id, 'marketplace_id' => 6 ])
                 ->first();
@@ -197,7 +195,6 @@ class WebhookController extends Controller {
                     ]);
                 }
                 
-                // decrease di internal
                 $decrement = Product::where('product_id', $item->product_id)->decrement('product_stock', $item->qtyChange);
                 
                 if(!$decrement) {
