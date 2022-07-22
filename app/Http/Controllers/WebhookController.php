@@ -111,7 +111,14 @@ class WebhookController extends Controller {
                 }
             };
         } catch (\Exception $exception) {
-            return $this->buildErrorResponse('error' , $exception->getMessage(), $exception->getCode());
+            DB::table('error_log')->insert([
+                'marketplace_id' => 6,
+                'error_message' => 'error webhook',
+                'error_function' => 'webhook_shopai',
+                'user_id' => 0,
+                'created_date' => date('Y-m-d H:i:s'),
+                'data' => ''
+            ]);
         }
     }
 
@@ -209,7 +216,14 @@ class WebhookController extends Controller {
                 }
             };
         } catch (\Exception $exception) {
-            return $this->buildErrorResponse('error' , $exception->getMessage(), $exception->getCode());
+            DB::table('error_log')->insert([
+                'marketplace_id' => 7,
+                'error_message' => 'error webhook',
+                'error_function' => 'webhook_topai',
+                'user_id' => 0,
+                'created_date' => date('Y-m-d H:i:s'),
+                'data' => ''
+            ]);
         }   
     }
 
